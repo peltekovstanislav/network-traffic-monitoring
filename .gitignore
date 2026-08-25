@@ -1,0 +1,20 @@
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# --- PyCharm ---
+.idea/
+
+# --- Project databases (contains your real captured traffic data) ---
+netmon.db
+netmon.db-shm
+netmon.db-wal
+test_*.db
+*.db-journal
+
+# --- Secrets / local overrides (if you ever add these) ---
+.env
