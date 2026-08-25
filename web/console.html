@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NETMON // CONSOLE</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0B0D0E; color: #E8E6E1;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    min-height: 100vh;
+  }
+  .mono { font-family: 'Consolas', 'SF Mono', monospace; }
+  header {
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: rgba(11,13,14,0.92); backdrop-filter: blur(6px); z-index: 10;
+  }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#FFB020; }
+  .brand-text { font-family: monospace; font-size: 14px; letter-spacing: 1px; color:#E5E5E5; }
+  .brand-text .dim { color:#5C6470; }
+  .status-pill { display:flex; align-items:center; gap:7px; padding:6px 14px; border-radius:999px;
+    font-family: monospace; font-size:12px; border:1px solid rgba(52,211,153,0.3); background:rgba(52,211,153,0.1); color:#6EE7B7;
+    transition: all 0.3s; }
+  .status-pill.anomaly { border-color: rgba(255,90,90,0.4); background: rgba(255,90,90,0.1); color: #FCA5A5; }
+  .status-pill.nodata { border-color: rgba(139,145,152,0.3); background: rgba(139,145,152,0.08); color: #8B9198; }
+  .status-dot { width:7px; height:7px; border-radius:50%; background:#34D399; }
+  .status-pill.anomaly .status-dot { background: #F87171; }
+  .status-pill.nodata .status-dot { background: #8B9198; }
+  .clock { font-family:monospace; font-size:12px; color:#8B9198; margin-right:20px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 32px 24px; }
+  .panel { background:#14171A; border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:18px; }
+  .hero { background:#101315; border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px; margin-bottom: 28px; }
+  .hero-top { display:flex; justify-content:space-between; align-items:flex-start; }
+  .eyebrow { display:flex; align-items:center; gap:7px; font-family:monospace; font-size:11px; letter-spacing:2px; color:#8B9198; text-transform:uppercase; }
+  .hero-desc { color:#6B7280; font-size:12px; margin-top:8px; max-width:480px; line-height:1.5; }
+  .divergence-val { font-family:monospace; font-size:30px; font-weight:600; text-align:right; color:#E5E5E5; }
+  .divergence-val.high { color: #FF5A5A; }
+  .divergence-label { font-family:monospace; font-size:10px; letter-spacing:2px; color:#5C6470; text-transform:uppercase; text-align:right; }
+  .tiles { display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-bottom: 28px; }
+  .tile-label { font-family:monospace; font-size:10px; letter-spacing:2px; color:#5C6470; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center; }
+  .tile-value { font-family:monospace; font-size:26px; font-weight:600; margin-top: 14px; }
+  .tile-unit { font-size:11px; color:#5C6470; font-weight:400; margin-left:4px; }
+  .amber { color:#FFB020; } .teal { color:#4FD1C5; } .red { color:#FF5A5A; }
+  .three-col { display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom: 28px; }
+  .section-title { display:flex; align-items:center; gap:7px; font-family:monospace; font-size:11px; letter-spacing:2px; color:#8B9198; text-transform:uppercase; margin-bottom:14px; }
+  .empty-msg { font-family:monospace; font-size:11px; color:#4B5158; }
+  .talker-row { font-size:12px; margin-bottom:12px; }
+  .talker-top { display:flex; justify-content:space-between; font-family:monospace; color:#D4D4D8; }
+  .bar-track { height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; margin-top:5px; }
+  .bar-fill { height:100%; background:rgba(255,176,32,0.6); border-radius:2px; transition: width 0.4s; }
+  .anomaly-card { border:1px solid rgba(255,90,90,0.3); background:rgba(255,90,90,0.06); border-radius:6px; padding:10px; margin-bottom:10px; }
+  .anomaly-top { display:flex; justify-content:space-between; align-items:center; }
+  .anomaly-title { font-family:monospace; font-size:12px; color:#FCA5A5; }
+  .anomaly-score { font-family:monospace; font-size:10px; color:#F87171; }
+  .anomaly-time { font-size:10px; color:#5C6470; margin-top:4px; }
+  .probe-row { font-size:12px; margin-bottom:12px; }
+  .probe-top { display:flex; justify-content:space-between; font-family:monospace; color:#D4D4D8; }
+  .probe-name { display:flex; align-items:center; gap:6px; }
+  .probe-dot { width:5px; height:5px; border-radius:50%; background:#34D399; flex-shrink:0; }
+  .probe-dot.down { background:#F87171; }
+  .probe-detail { font-size:10px; color:#5C6470; margin-top:2px; margin-left:11px; }
+  .report-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-top:1px solid rgba(255,255,255,0.05); font-size:12px; }
+  .report-name { font-family:monospace; color:#D4D4D8; }
+  .report-right { display:flex; align-items:center; gap:16px; font-family:monospace; color:#5C6470; }
+  footer { text-align:center; font-family:monospace; font-size:10px; color:#3F444A; padding: 20px 0 30px; }
+  .conn-banner {
+    margin: 16px 28px 0; padding: 10px 16px; border-radius: 8px; font-family: monospace; font-size: 12px;
+    border: 1px solid rgba(255,176,32,0.3); background: rgba(255,176,32,0.06); color: #FFB020; display: none;
+  }
+  svg { display:block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="dot"></div>
+    <div class="brand-text">NETMON <span class="dim">// CONSOLE</span></div>
+  </div>
+  <div style="display:flex; align-items:center;">
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="status-pill nodata" id="statusPill"><div class="status-dot"></div><span id="statusText">CONNECTING</span></div>
+  </div>
+</header>
+
+<div class="conn-banner" id="connBanner">
+  Backend not reachable at <span id="apiBaseLabel"></span> &mdash; make sure api.py is running: python api.py --db netmon.db --port 8080
+</div>
+
+<main>
+
+  <div class="hero">
+    <div class="hero-top">
+      <div>
+        <div class="eyebrow">&#9679; Entropy Divergence &mdash; Live</div>
+        <div class="hero-desc">Source-IP entropy (amber) vs. destination-port entropy (teal), read directly from window_metrics. A scan collapses the amber trace while spiking the teal trace.</div>
+      </div>
+      <div>
+        <div class="divergence-val" id="divergenceVal">&ndash;</div>
+        <div class="divergence-label">divergence (bits)</div>
+      </div>
+    </div>
+    <div style="height:230px; margin-top:14px; position:relative;">
+      <svg id="scopeSvg" width="100%" height="230" viewBox="0 0 1132 230"></svg>
+      <div id="scopeEmpty" class="empty-msg" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">Waiting for data...</div>
+    </div>
+  </div>
+
+  <div class="tiles">
+    <div class="panel">
+      <div class="tile-label">Packet Rate <span>&#9679;</span></div>
+      <div class="tile-value amber" id="tilePktRate">&ndash;<span class="tile-unit">pkt/s</span></div>
+    </div>
+    <div class="panel">
+      <div class="tile-label">Bandwidth <span>&#9679;</span></div>
+      <div class="tile-value teal" id="tileBandwidth">&ndash;<span class="tile-unit">Mbps</span></div>
+    </div>
+    <div class="panel">
+      <div class="tile-label">Active Flows <span>&#9679;</span></div>
+      <div class="tile-value amber" id="tileFlows">&ndash;<span class="tile-unit">flows</span></div>
+    </div>
+    <div class="panel">
+      <div class="tile-label">SYN Rate <span>&#9679;</span></div>
+      <div class="tile-value teal" id="tileSyn">&ndash;<span class="tile-unit">/sec</span></div>
+    </div>
+  </div>
+
+  <div class="three-col">
+    <div class="panel">
+      <div class="section-title">&#9737; Top Talkers</div>
+      <div id="talkersList"><div class="empty-msg">No data yet</div></div>
+    </div>
+    <div class="panel">
+      <div class="section-title">&#9888; Recent Anomalies</div>
+      <div id="anomaliesList"><div class="empty-msg">None detected</div></div>
+    </div>
+    <div class="panel">
+      <div class="section-title">&#9737; Probe Status</div>
+      <div id="probesList"><div class="empty-msg">No data yet</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="section-title">&#9636; Automated Reports <span style="color:#3F444A; text-transform:none; letter-spacing:0;">&middot; every 30 min</span></div>
+    <div id="reportsList"><div class="empty-msg">No reports generated yet</div></div>
+  </div>
+
+  <footer id="footerStatus">connecting...</footer>
+
+</main>
+
+<script>
+const API_BASE = "http://127.0.0.1:8080";
+const POLL_INTERVAL_MS = 4000;
+document.getElementById("apiBaseLabel").textContent = API_BASE;
+
+let failCount = 0;
+let connected = null;
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+}
+
+function formatAgo(unixSeconds) {
+  const delta = Math.max(0, Date.now() / 1000 - unixSeconds);
+  if (delta < 60) return Math.round(delta) + "s ago";
+  if (delta < 3600) return Math.round(delta / 60) + " min ago";
+  return Math.round(delta / 3600) + "h " + Math.round((delta % 3600) / 60) + "m ago";
+}
+
+function setStatus(state) {
+  // state: "connecting" | "normal" | "anomaly" | "nodata"
+  const pill = document.getElementById("statusPill");
+  const text = document.getElementById("statusText");
+  pill.className = "status-pill" + (state === "anomaly" ? " anomaly" : state === "nodata" || state === "connecting" ? " nodata" : "");
+  text.textContent = state === "connecting" ? "CONNECTING" : state === "nodata" ? "NO DATA" : state === "anomaly" ? "ANOMALY DETECTED" : "NORMAL";
+}
+
+async function fetchJson(path) {
+  const res = await fetch(API_BASE + path);
+  if (!res.ok) throw new Error(path + " -> HTTP " + res.status);
+  return res.json();
+}
+
+function drawScope(history) {
+  const svg = document.getElementById("scopeSvg");
+  const emptyMsg = document.getElementById("scopeEmpty");
+  svg.innerHTML = "";
+  if (!history || history.length === 0) {
+    emptyMsg.style.display = "flex";
+    return;
+  }
+  emptyMsg.style.display = "none";
+
+  const W = 1132, H = 230, PAD_L = 24, PAD_R = 8, PAD_T = 10, PAD_B = 20;
+  const maxVal = Math.max(4, ...history.map(h => Math.max(h.src_ip_entropy, h.dst_port_entropy))) * 1.1;
+
+  const ns = "http://www.w3.org/2000/svg";
+  // grid lines + labels
+  for (let i = 0; i <= 4; i++) {
+    const y = PAD_T + (H - PAD_T - PAD_B) * (i / 4);
+    const line = document.createElementNS(ns, "line");
+    line.setAttribute("x1", PAD_L); line.setAttribute("x2", W - PAD_R);
+    line.setAttribute("y1", y); line.setAttribute("y2", y);
+    line.setAttribute("stroke", "#20242A"); line.setAttribute("stroke-width", "1");
+    svg.appendChild(line);
+    const label = document.createElementNS(ns, "text");
+    label.setAttribute("x", 0); label.setAttribute("y", y + 3);
+    label.setAttribute("font-family", "Consolas, monospace"); label.setAttribute("font-size", "10");
+    label.setAttribute("fill", "#5C6470");
+    label.textContent = (maxVal * (1 - i / 4)).toFixed(1);
+    svg.appendChild(label);
+  }
+
+  function points(key) {
+    return history.map((h, i) => {
+      const x = PAD_L + (W - PAD_L - PAD_R) * (i / Math.max(1, history.length - 1));
+      const y = PAD_T + (H - PAD_T - PAD_B) * (1 - h[key] / maxVal);
+      return x.toFixed(1) + "," + y.toFixed(1);
+    }).join(" ");
+  }
+
+  const teal = document.createElementNS(ns, "polyline");
+  teal.setAttribute("points", points("dst_port_entropy"));
+  teal.setAttribute("fill", "none"); teal.setAttribute("stroke", "#4FD1C5"); teal.setAttribute("stroke-width", "2");
+  svg.appendChild(teal);
+
+  const amber = document.createElementNS(ns, "polyline");
+  amber.setAttribute("points", points("src_ip_entropy"));
+  amber.setAttribute("fill", "none"); amber.setAttribute("stroke", "#FFB020"); amber.setAttribute("stroke-width", "2");
+  svg.appendChild(amber);
+}
+
+function renderTalkers(talkers) {
+  const el = document.getElementById("talkersList");
+  if (!talkers.length) { el.innerHTML = '<div class="empty-msg">No data yet</div>'; return; }
+  const maxBytes = Math.max(...talkers.map(t => t.total_bytes));
+  el.innerHTML = talkers.map(t => `
+    <div class="talker-row">
+      <div class="talker-top"><span>${t.ip}</span><span>${formatBytes(t.total_bytes)}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(t.total_bytes / maxBytes) * 100}%"></div></div>
+    </div>`).join("");
+}
+
+function renderAnomalies(anomalies) {
+  const el = document.getElementById("anomaliesList");
+  if (!anomalies.length) { el.innerHTML = '<div class="empty-msg">None detected</div>'; return; }
+  el.innerHTML = anomalies.map(a => `
+    <div class="anomaly-card">
+      <div class="anomaly-top"><span class="anomaly-title">window ${a.window_id}</span><span class="anomaly-score">score ${a.anomaly_score.toFixed(3)}</span></div>
+      <div class="anomaly-time">${formatAgo(a.window_end)} \u2014 ${a.packet_rate.toFixed(0)} pkt/s, divergence ${(a.dst_port_entropy - a.src_ip_entropy).toFixed(2)}</div>
+    </div>`).join("");
+}
+
+function renderProbes(probes) {
+  const el = document.getElementById("probesList");
+  if (!probes.length) { el.innerHTML = '<div class="empty-msg">No data yet</div>'; return; }
+  el.innerHTML = probes.map(p => `
+    <div class="probe-row">
+      <div class="probe-top"><span class="probe-name"><span class="probe-dot ${p.status !== 'UP' ? 'down' : ''}"></span>${p.target}</span><span>${p.rtt_avg_ms != null ? p.rtt_avg_ms.toFixed(1) + 'ms' : '\u2013'}</span></div>
+      <div class="probe-detail">jitter ${p.jitter_ms != null ? p.jitter_ms.toFixed(2) + 'ms' : '\u2013'} &middot; loss ${p.packet_loss_pct}%</div>
+    </div>`).join("");
+}
+
+function renderReports(reports) {
+  const el = document.getElementById("reportsList");
+  if (!reports.length) { el.innerHTML = '<div class="empty-msg">No reports generated yet</div>'; return; }
+  el.innerHTML = reports.map(r => `
+    <div class="report-row">
+      <span class="report-name">${r.name}</span>
+      <div class="report-right"><span>${formatAgo(r.modified)}</span><span>${r.size_kb} KB</span>
+        <a href="${API_BASE}/api/reports/${encodeURIComponent(r.name)}" target="_blank" style="color:#8B9198; text-decoration:none;">&#8681;</a>
+      </div>
+    </div>`).join("");
+}
+
+async function pollOnce() {
+  // Each endpoint is fetched independently (Promise.allSettled, not
+  // Promise.all) so that one endpoint failing - e.g. /api/probes
+  // returning 500 before active_probe.py has ever been run, which
+  // creates its table - does not block every other panel from
+  // updating. A single flaky endpoint should degrade gracefully
+  // (that one panel keeps showing its last-known state), not take
+  // down the whole dashboard.
+  const results = await Promise.allSettled([
+    fetchJson("/api/snapshot"),
+    fetchJson("/api/entropy-history?limit=40"),
+    fetchJson("/api/top-talkers?minutes=10&limit=5"),
+    fetchJson("/api/anomalies?limit=10"),
+    fetchJson("/api/probes"),
+    fetchJson("/api/reports"),
+  ]);
+  const [snapR, histR, talkersR, anomaliesR, probesR, reportsR] = results;
+
+  // Connection is considered healthy if the core snapshot endpoint is
+  // reachable - that's the one every other panel's "freshness" hinges
+  // on. Individual panel endpoints failing independently is handled
+  // per-panel below, not treated as a total disconnect.
+  if (snapR.status === "fulfilled") {
+    failCount = 0;
+    connected = true;
+    document.getElementById("connBanner").style.display = "none";
+    document.getElementById("footerStatus").textContent = "connected \u2014 " + API_BASE;
+
+    const snap = snapR.value;
+    if (snap.available) {
+      document.getElementById("tilePktRate").innerHTML = snap.packet_rate.toFixed(1) + '<span class="tile-unit">pkt/s</span>';
+      document.getElementById("tileBandwidth").innerHTML = snap.bandwidth_mbps.toFixed(3) + '<span class="tile-unit">Mbps</span>';
+      document.getElementById("tileFlows").innerHTML = snap.active_flows + '<span class="tile-unit">flows</span>';
+      document.getElementById("tileSyn").innerHTML = snap.syn_rate.toFixed(2) + '<span class="tile-unit">/sec</span>';
+
+      const divEl = document.getElementById("divergenceVal");
+      divEl.textContent = (snap.entropy_divergence > 0 ? "+" : "") + snap.entropy_divergence.toFixed(2);
+      divEl.className = "divergence-val" + (snap.entropy_divergence > 3 ? " high" : "");
+
+      setStatus(snap.is_anomaly ? "anomaly" : "normal");
+    }
+  } else {
+    failCount++;
+    if (failCount >= 2) {
+      connected = false;
+      document.getElementById("connBanner").style.display = "block";
+      document.getElementById("footerStatus").textContent = "disconnected \u2014 " + API_BASE;
+      setStatus("nodata");
+    }
+  }
+
+  // Each panel below only updates if its own endpoint succeeded this
+  // cycle; on failure it simply keeps whatever it last showed (or the
+  // "No data yet" empty state, if it never succeeded at all).
+  if (histR.status === "fulfilled") drawScope(histR.value);
+  if (talkersR.status === "fulfilled") renderTalkers(talkersR.value);
+  if (anomaliesR.status === "fulfilled") renderAnomalies(anomaliesR.value);
+  if (probesR.status === "fulfilled") renderProbes(probesR.value);
+  if (reportsR.status === "fulfilled") renderReports(reportsR.value);
+}
+
+function tickClock() {
+  document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+}
+
+setStatus("connecting");
+tickClock();
+setInterval(tickClock, 1000);
+pollOnce();
+setInterval(pollOnce, POLL_INTERVAL_MS);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Active probing target pool - one host per line.
+# Lines starting with # are comments; blank lines are ignored.
+# Keep this list small and fixed (a handful of hosts), not one entry
+# per arbitrary flow - see the design notes in active_probe.py for why.
+
+# Local network
+GATEWAY                # auto-resolved to this machine's actual default gateway at load time
+
+# Public DNS resolvers - stable, high-uptime, good baseline references
+1.1.1.1                # Cloudflare
+8.8.8.8                # Google
+
+# A general-purpose external site for a "real world" reference point
+cloudflare.com

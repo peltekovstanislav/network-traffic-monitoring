@@ -1,0 +1,33 @@
+# Prometheus configuration for the network monitoring project.
+#
+# scrape_interval controls how often Prometheus polls each target's
+# /metrics endpoint. 5s matches the capture script's own reporting
+# window, so Prometheus's stored data lines up 1:1 with each window
+# report rather than sampling faster or slower than data actually changes.
+
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "netmon"
+    static_configs:
+      # Running natively on Windows (no Docker) - Prometheus and the
+      # Python exporter are both plain processes on the same machine,
+      # so localhost is all that's needed to reach it.
+      - targets: ["localhost:8000"]
+
+  - job_name: "netmon-probes"
+    static_configs:
+      # Phase 4 active probing exporter (RTT/jitter/packet loss) - a
+      # separate process on its own port, scraped as a second job.
+      - targets: ["localhost:8001"]
+
+  - job_name: "netmon-anomaly"
+    static_configs:
+      # Phase 5 Isolation Forest anomaly detector, running in --mode watch
+      # with --exporter-port 8002 - a third independent process, scraped
+      # as a third job. Its own scrape_interval below is set slightly
+      # longer than the default: the detector's own --poll-interval
+      # (5s default) governs how often it actually re-scores, so scraping
+      # much faster than that would just re-read the same value.
+      - targets: ["localhost:8002"]
